@@ -1042,3 +1042,134 @@ body {
 .text-center {
   text-align: center;
 }
+
+/* ═══════ AWWWARDS PREMIUM UI OVERRIDES ═══════ */
+body {
+  background: radial-gradient(circle at 50% 0%, #1e1b4b 0%, var(--bg-color) 40%, var(--bg-color) 100%);
+  background-attachment: fixed;
+}
+
+.app-header {
+  background: rgba(10, 10, 10, 0.6);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border-bottom: 1px solid rgba(255,255,255,0.05);
+  box-shadow: 0 4px 30px rgba(0, 0, 0, 0.2);
+  position: sticky;
+  top: 0;
+  z-index: 50;
+}
+
+.sparkle-icon {
+  animation: float 3s ease-in-out infinite;
+}
+
+@keyframes float {
+  0% { transform: translateY(0px) rotate(0deg); }
+  50% { transform: translateY(-3px) rotate(5deg); filter: drop-shadow(0 0 8px #a78bfa); }
+  100% { transform: translateY(0px) rotate(0deg); }
+}
+
+.empty-icon {
+  animation: float 4s ease-in-out infinite;
+  filter: drop-shadow(0 0 15px rgba(139, 92, 246, 0.5));
+}
+
+.input-area-wrapper {
+  background: linear-gradient(to top, rgba(10,10,10,1) 50%, rgba(10,10,10,0));
+  padding-top: 40px;
+}
+
+.input-bar {
+  background: rgba(25, 25, 25, 0.6);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+  transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+}
+
+.input-bar:focus-within {
+  border-color: rgba(167, 139, 250, 0.5);
+  box-shadow: 0 0 25px rgba(167, 139, 250, 0.2), 0 8px 32px rgba(0, 0, 0, 0.4);
+  transform: translateY(-2px);
+}
+
+.send-btn {
+  background: linear-gradient(135deg, #60a5fa, #a78bfa);
+  color: white;
+  transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+  box-shadow: 0 4px 15px rgba(167, 139, 250, 0.4);
+}
+
+.send-btn:hover:not(:disabled) {
+  transform: scale(1.15) rotate(-8deg);
+  box-shadow: 0 8px 25px rgba(167, 139, 250, 0.6);
+  background: linear-gradient(135deg, #93c5fd, #c4b5fd);
+}
+
+/* React Bits style AI Thinking Button (Conic Gradient Border) */
+.thought-badge {
+  position: relative;
+  background: #121212;
+  padding: 6px 14px;
+  border-radius: 20px;
+  overflow: hidden;
+  z-index: 1;
+  color: #e4e4e7;
+  border: none;
+  box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+}
+
+.thought-badge.pulsing::before {
+  content: '';
+  position: absolute;
+  top: -50%; left: -50%; width: 200%; height: 200%;
+  background: conic-gradient(from 0deg, transparent 0%, transparent 40%, #8b5cf6 50%, #3b82f6 60%, transparent 100%);
+  animation: spin 2s linear infinite;
+  z-index: -1;
+}
+
+.thought-badge.pulsing::after {
+  content: '';
+  position: absolute;
+  inset: 1px;
+  background: #121212;
+  border-radius: 19px;
+  z-index: -1;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.message-bubble.assistant {
+  animation: slideUpFade 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  background: linear-gradient(145deg, #1a1a1a, #141414);
+  border: 1px solid rgba(255,255,255,0.04);
+  box-shadow: 0 8px 24px rgba(0,0,0,0.15);
+}
+
+.message-bubble.user {
+  animation: slideUpFade 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  background: linear-gradient(135deg, #27272a, #1c1c1e);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+}
+
+@keyframes slideUpFade {
+  0% { opacity: 0; transform: translateY(20px) scale(0.96); }
+  100% { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.quick-prompts button {
+  background: rgba(24, 24, 27, 0.7);
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(255,255,255,0.05);
+}
+
+.quick-prompts button:hover {
+  background: rgba(39, 39, 42, 0.9);
+  border-color: rgba(139, 92, 246, 0.5);
+  box-shadow: 0 4px 15px rgba(139, 92, 246, 0.2);
+  transform: translateY(-2px) scale(1.02);
+}
