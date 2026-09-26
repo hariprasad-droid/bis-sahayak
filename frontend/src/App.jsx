@@ -2,7 +2,8 @@ import React, { useState, useRef, useEffect } from 'react';
 import { 
   Send, ThumbsUp, ThumbsDown, Mic, MicOff, Volume2, VolumeX, 
   Copy, Check, RotateCw, Plus, Paperclip, Sparkles, Edit3,
-  FileText, ExternalLink, MessageSquarePlus, Shield, ShieldCheck, ShieldAlert, X
+  FileText, ExternalLink, MessageSquarePlus, Shield, ShieldCheck, ShieldAlert, X,
+  Award, CheckCircle, Droplet, Smartphone
 } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -345,17 +346,17 @@ function App() {
             <h2>How can I assist you with Indian Standards today?</h2>
             <p>Ask about BIS certifications, ISI mark schemes, Hallmarking, product compliance, Quality Control Orders, or any BIS guideline.</p>
             <div className="quick-prompts staggered-reveal">
-              <button style={{animationDelay: '0.1s'}} onClick={() => handleSend("What is the hallmarking process for gold jewellery?")}>
-                🏅 Hallmarking process
+              <button style={{animationDelay: '0.1s', display: 'flex', alignItems: 'center', gap: '6px'}} onClick={() => handleSend("What is the hallmarking process for gold jewellery?")}>
+                <Award size={16} className="text-active" /> Hallmarking process
               </button>
-              <button style={{animationDelay: '0.2s'}} onClick={() => handleSend("How to get ISI mark for my product?")}>
-                ✅ ISI Mark process
+              <button style={{animationDelay: '0.2s', display: 'flex', alignItems: 'center', gap: '6px'}} onClick={() => handleSend("How to get ISI mark for my product?")}>
+                <CheckCircle size={16} className="text-active" /> ISI Mark process
               </button>
-              <button style={{animationDelay: '0.3s'}} onClick={() => handleSend("What is the permissible limit of Lead in Packaged Drinking Water as per IS 14543?")}>
-                💧 IS 14543 Drinking Water
+              <button style={{animationDelay: '0.3s', display: 'flex', alignItems: 'center', gap: '6px'}} onClick={() => handleSend("What is the permissible limit of Lead in Packaged Drinking Water as per IS 14543?")}>
+                <Droplet size={16} className="text-active" /> IS 14543 Drinking Water
               </button>
-              <button style={{animationDelay: '0.4s'}} onClick={() => handleSend("What is CRS scheme for electronics?")}>
-                📱 CRS for electronics
+              <button style={{animationDelay: '0.4s', display: 'flex', alignItems: 'center', gap: '6px'}} onClick={() => handleSend("What is CRS scheme for electronics?")}>
+                <Smartphone size={16} className="text-active" /> CRS for electronics
               </button>
             </div>
           </div>
