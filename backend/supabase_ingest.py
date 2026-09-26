@@ -1,7 +1,8 @@
 """
-Ingest scraped BIS documents into Supabase pgvector using Ollama Cloud embeddings.
+Ingest scraped BIS documents into Supabase pgvector.
+Uses Hugging Face Inference API for free embeddings (nomic-ai/nomic-embed-text-v1.5, 768 dims).
 """
-import sys, io, os, json, re, hashlib, time
+import sys, io, os, json, re, time
 if isinstance(sys.stdout, io.TextIOWrapper) and sys.stdout.encoding != 'utf-8':
     sys.stdout.reconfigure(encoding='utf-8')
 
@@ -15,15 +16,13 @@ load_dotenv(BASE_DIR / ".env")
 
 SUPABASE_URL = os.environ["SUPABASE_URL"]
 SUPABASE_KEY = os.environ["SUPABASE_KEY"]
-OLLAMA_CLOUD_URL = os.environ["OLLAMA_CLOUD_URL"].replace("/chat/completions", "/embeddings")
-OLLAMA_CLOUD_KEY = os.environ["OLLAMA_CLOUD_API_KEY"]
+
+# Hugging Face Inference API (free, no key needed for public models)
+HF_EMBED_URL = "https://api-inference.huggingface.co/pipeline/feature-extraction/nomic-ai/nomic-embed-text-v1.5"
 
 DATA_DIR = BASE_DIR / "data" / "raw"
-SOURCES_FILE = BASE_DIR / "sources.json"
-
 supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
 
-# Category detection
 CATEGORY_PATTERNS = [
     (r'hallmark|huid|ahc|jewel|gold', 'Hallmarking'),
     (r'product.certif|scheme.i|isi.mark|conformity|licence', 'Product Certification'),
@@ -31,12 +30,6 @@ CATEGORY_PATTERNS = [
     (r'crs|compulsory.registration|electronics|meity', 'CRS / Electronics'),
     (r'fmcs|foreign.manufactur', 'FMCS'),
     (r'water|drinking|is.14543|is.10500', 'Drinking Water'),
-    (r'steel|iron|ferr', 'Steel & Iron'),
-    (r'chemical|acid|polymer|plastic', 'Chemicals & Polymers'),
-    (r'textile|cotton|yarn', 'Textiles'),
-    (r'food|fssai|edible', 'Food Safety'),
-    (r'solar|renewable|mnre', 'Solar & Renewable Energy'),
-    (r'electrical|appliance|fan', 'Electrical Appliances'),
     (r'fee|marking.fee|cost|charge', 'Fees & Charges'),
     (r'bis.act|regulation|amendment', 'BIS Act & Regulations'),
     (r'faq|frequently', 'FAQs'),
@@ -50,35 +43,40 @@ def detect_category(filename):
             return category
     return "General"
 
-def get_embedding(text):
-    """Get embedding from Ollama Cloud API."""
-    headers = {
-        "Authorization": f"Bearer {OLLAMA_CLOUD_KEY}",
-        "Content-Type": "application/json"
-    }
-    payload = {
-        "model": "nomic-embed-text",
-        "input": text[:8000]  # Truncate very long texts
-    }
-    
+def get_embedding_hf(text):
+    """Get 768-dim embedding from HuggingFace free Inference API."""
+    payload = {"inputs": text[:2000], "options": {"wait_for_model": True}}
     for attempt in range(3):
         try:
-            response = requests.post(OLLAMA_CLOUD_URL, headers=headers, json=payload, timeout=30)
-            if response.status_code == 200:
-                return response.json()["data"][0]["embedding"]
-            elif response.status_code == 429:
-                print(f"  Rate limited, waiting {5 * (attempt+1)}s...")
-                time.sleep(5 * (attempt + 1))
+            r = requests.post(HF_EMBED_URL, json=payload, timeout=60)
+            if r.status_code == 200:
+                emb = r.json()
+                # The API returns a list of token embeddings; we need to mean-pool
+                if isinstance(emb, list) and len(emb) > 0:
+                    if isinstance(emb[0], list):
+                        # Mean pooling across tokens
+                        import numpy as np
+                        arr = np.array(emb)
+                        pooled = arr.mean(axis=0).tolist()
+                        return pooled
+                    else:
+                        return emb
+                return None
+            elif r.status_code == 503:
+                print(f"    Model loading, waiting 20s...")
+                time.sleep(20)
+            elif r.status_code == 429:
+                print(f"    Rate limited, waiting {10*(attempt+1)}s...")
+                time.sleep(10 * (attempt + 1))
             else:
-                print(f"  Embedding error {response.status_code}: {response.text[:200]}")
+                print(f"    HF error {r.status_code}: {r.text[:200]}")
                 return None
         except Exception as e:
-            print(f"  Embedding request error: {e}")
-            time.sleep(2)
+            print(f"    Request error: {e}")
+            time.sleep(3)
     return None
 
-def chunk_text(text, chunk_size=800, overlap=150):
-    """Split text into overlapping chunks."""
+def chunk_text(text, chunk_size=600, overlap=100):
     chunks = []
     start = 0
     while start < len(text):
@@ -90,57 +88,54 @@ def chunk_text(text, chunk_size=800, overlap=150):
     return chunks
 
 def ingest_file(filepath, category=None):
-    """Ingest a single file into Supabase."""
     name = filepath.name
     if category is None:
         category = detect_category(name)
     
-    print(f"\n📄 Processing: {name} [{category}]")
+    print(f"\n{'='*50}")
+    print(f"Processing: {name} [{category}]")
     
-    # Read file
     try:
-        if filepath.suffix == '.txt':
-            text = filepath.read_text(encoding='utf-8', errors='ignore')
-        elif filepath.suffix in ('.html', '.htm'):
+        if filepath.suffix in ('.html', '.htm'):
             from bs4 import BeautifulSoup
             raw = filepath.read_text(encoding='utf-8', errors='ignore')
             soup = BeautifulSoup(raw, 'html.parser')
             for tag in soup(['script', 'style', 'nav', 'footer', 'header']):
                 tag.decompose()
             text = soup.get_text(separator='\n', strip=True)
-        elif filepath.suffix == '.pdf':
-            try:
-                import fitz
-                doc = fitz.open(str(filepath))
-                text = '\n'.join(page.get_text() for page in doc)
-                doc.close()
-            except:
-                print(f"  ⚠ Could not read PDF: {name}")
-                return 0
         else:
             text = filepath.read_text(encoding='utf-8', errors='ignore')
     except Exception as e:
-        print(f"  ⚠ Read error: {e}")
+        print(f"  Read error: {e}")
         return 0
     
     if len(text.strip()) < 50:
-        print(f"  ⚠ Too short, skipping")
+        print(f"  Too short, skipping")
         return 0
     
-    # Chunk
     chunks = chunk_text(text)
-    print(f"  → {len(chunks)} chunks")
+    print(f"  {len(chunks)} chunks to embed")
     
     inserted = 0
     for i, chunk in enumerate(chunks):
-        embedding = get_embedding(chunk)
+        print(f"  Chunk {i+1}/{len(chunks)}...", end=" ", flush=True)
+        
+        embedding = get_embedding_hf(chunk)
         if embedding is None:
-            print(f"  ⚠ Embedding failed for chunk {i+1}")
+            print("FAILED")
             continue
+        
+        # Ensure 768 dimensions
+        if len(embedding) != 768:
+            print(f"Wrong dims ({len(embedding)}), padding/truncating")
+            if len(embedding) > 768:
+                embedding = embedding[:768]
+            else:
+                embedding = embedding + [0.0] * (768 - len(embedding))
         
         meta = {
             "source": str(filepath.relative_to(BASE_DIR)),
-            "title": name.replace('.txt', '').replace('.html', '').replace('.pdf', '').replace('_', ' ').title(),
+            "title": name.replace('.txt', '').replace('.html', '').replace('.htm', '').replace('.pdf', '').replace('_', ' ').replace('-', ' ').title(),
             "category": category,
             "file_type": filepath.suffix.lstrip('.'),
             "chunk_index": i,
@@ -153,38 +148,37 @@ def ingest_file(filepath, category=None):
                 "embedding": embedding
             }).execute()
             inserted += 1
+            print("OK")
         except Exception as e:
-            print(f"  ⚠ Insert error chunk {i+1}: {e}")
+            print(f"INSERT ERROR: {e}")
         
-        # Rate limiting
-        time.sleep(0.3)
+        time.sleep(0.5)  # Rate limiting
     
-    print(f"  ✅ Inserted {inserted}/{len(chunks)} chunks")
+    print(f"  => Inserted {inserted}/{len(chunks)} chunks")
     return inserted
 
 def main():
     total = 0
     
-    # 1. Ingest text files in data/raw
-    for txt_file in sorted(DATA_DIR.glob("*.txt")):
-        total += ingest_file(txt_file)
+    # 1. Text files
+    for f in sorted(DATA_DIR.glob("*.txt")):
+        total += ingest_file(f)
     
-    # 2. Ingest HTML files
+    # 2. HTML files 
     html_dir = DATA_DIR / "html"
     if html_dir.exists():
-        for html_file in sorted(html_dir.glob("*.html"))[:50]:  # Limit to first 50
-            total += ingest_file(html_file)
-        for html_file in sorted(html_dir.glob("*.htm"))[:50]:
-            total += ingest_file(html_file)
+        html_files = sorted(list(html_dir.glob("*.html")) + list(html_dir.glob("*.htm")))
+        for f in html_files[:40]:
+            total += ingest_file(f)
     
-    # 3. Ingest PDF files
+    # 3. PDF files
     pdf_dir = DATA_DIR / "pdf"
     if pdf_dir.exists():
-        for pdf_file in sorted(pdf_dir.glob("*.pdf"))[:30]:  # Limit to first 30
-            total += ingest_file(pdf_file)
+        for f in sorted(pdf_dir.glob("*.pdf"))[:20]:
+            total += ingest_file(f)
     
     print(f"\n{'='*50}")
-    print(f"🎉 DONE! Total chunks inserted: {total}")
+    print(f"DONE! Total chunks inserted: {total}")
     print(f"{'='*50}")
 
 if __name__ == "__main__":

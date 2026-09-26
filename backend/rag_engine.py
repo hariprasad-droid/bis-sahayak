@@ -25,26 +25,39 @@ def get_supabase_client() -> Client:
     return _supabase_client
 
 def get_embedding(text: str) -> list[float]:
-    ollama_url = os.getenv("OLLAMA_CLOUD_URL", "").replace("/chat/completions", "/embeddings")
-    ollama_key = os.getenv("OLLAMA_CLOUD_API_KEY", "")
+    """Get 768-dim embedding from HuggingFace free Inference API (nomic-embed-text-v1.5)."""
+    HF_EMBED_URL = "https://api-inference.huggingface.co/pipeline/feature-extraction/nomic-ai/nomic-embed-text-v1.5"
     
-    if not ollama_url or not ollama_key:
-        raise ValueError("OLLAMA_CLOUD_URL and OLLAMA_CLOUD_API_KEY must be set for embeddings")
-        
-    headers = {
-        "Authorization": f"Bearer {ollama_key}",
-        "Content-Type": "application/json"
-    }
-    payload = {
-        "model": "nomic-embed-text",
-        "input": text
-    }
+    payload = {"inputs": text[:2000], "options": {"wait_for_model": True}}
     
-    response = requests.post(ollama_url, headers=headers, json=payload, timeout=20)
-    if response.status_code == 200:
-        return response.json()["data"][0]["embedding"]
-    else:
-        raise Exception(f"Ollama Embeddings API error: {response.text}")
+    for attempt in range(3):
+        try:
+            response = requests.post(HF_EMBED_URL, json=payload, timeout=30)
+            if response.status_code == 200:
+                emb = response.json()
+                if isinstance(emb, list) and len(emb) > 0:
+                    if isinstance(emb[0], list):
+                        # Mean pooling across tokens
+                        n = len(emb)
+                        dim = len(emb[0])
+                        pooled = [sum(emb[t][d] for t in range(n)) / n for d in range(dim)]
+                        # Ensure 768 dims
+                        if len(pooled) > 768:
+                            pooled = pooled[:768]
+                        elif len(pooled) < 768:
+                            pooled = pooled + [0.0] * (768 - len(pooled))
+                        return pooled
+                    else:
+                        return emb
+                raise Exception("Invalid embedding response format")
+            elif response.status_code == 503:
+                import time; time.sleep(10)
+            else:
+                raise Exception(f"HF Embeddings API error {response.status_code}: {response.text[:200]}")
+        except Exception as e:
+            if attempt == 2:
+                raise
+            import time; time.sleep(2)
 
 
 def is_boilerplate(text: str) -> bool:
