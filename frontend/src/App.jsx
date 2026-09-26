@@ -8,6 +8,8 @@ import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import ScraperPortal from './ScraperPortal';
 import CallChip from './CallChip';
+import JellyRadio from './JellyRadio';
+import LatticeLoader from './LatticeLoader';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || '';
 
@@ -15,6 +17,7 @@ function App() {
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');
   const [language, setLanguage] = useState('en');
+  const [effort, setEffort] = useState('Medium');
   const [sessionId, setSessionId] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isListening, setIsListening] = useState(false);
@@ -309,6 +312,18 @@ function App() {
               <option value="bn">Bengali</option>
             </select>
           </div>
+          <div style={{ transform: 'scale(0.85)', transformOrigin: 'right center' }}>
+            <JellyRadio
+              items={['Low', 'Medium', 'High']}
+              defaultValue="Medium"
+              onChange={(value) => setEffort(value)}
+              chipColor="rgba(255,255,255,0.05)"
+              activeColor="#8b5cf6"
+              textColor="#a1a1aa"
+              activeTextColor="#ffffff"
+              size="sm"
+            />
+          </div>
 
         </div>
       </header>
@@ -432,20 +447,18 @@ function App() {
         {isLoading && (
           <div className="message-wrapper assistant">
             <div className="message-block" style={{ marginLeft: '12px' }}>
-              <CallChip
-                icon="database"
-                name="AI Generating"
-                argument="Searching BIS knowledge base..."
-                status="running"
-                expectedMs={4500}
-                size={34}
-                radius={12}
-                color="#e4e4e7"
-                surfaceColor="#121212"
-                progressColor="#8b5cf6"
-                progressOpacity={0.2}
-                doneColor="#22c55e"
-                errorColor="#ef4444"
+              <LatticeLoader
+                status="working"
+                label="AI Thinking"
+                pattern="orbit"
+                grid={3}
+                shape="round"
+                cellSize={6}
+                gap={2}
+                fontSize={12}
+                step={90}
+                idleOpacity={0.15}
+                glow={true}
                 showTimer={true}
               />
             </div>
