@@ -25,14 +25,26 @@ def get_supabase_client() -> Client:
     return _supabase_client
 
 def get_embedding(text: str) -> list[float]:
-    if not OPENAI_API_KEY:
-        raise ValueError("OPENAI_API_KEY must be set in .env for embeddings")
-    openai.api_key = OPENAI_API_KEY
-    response = openai.embeddings.create(
-        input=text,
-        model="text-embedding-3-small"
-    )
-    return response.data[0].embedding
+    ollama_url = os.getenv("OLLAMA_CLOUD_URL", "").replace("/chat/completions", "/embeddings")
+    ollama_key = os.getenv("OLLAMA_CLOUD_API_KEY", "")
+    
+    if not ollama_url or not ollama_key:
+        raise ValueError("OLLAMA_CLOUD_URL and OLLAMA_CLOUD_API_KEY must be set for embeddings")
+        
+    headers = {
+        "Authorization": f"Bearer {ollama_key}",
+        "Content-Type": "application/json"
+    }
+    payload = {
+        "model": "nomic-embed-text",
+        "input": text
+    }
+    
+    response = requests.post(ollama_url, headers=headers, json=payload, timeout=20)
+    if response.status_code == 200:
+        return response.json()["data"][0]["embedding"]
+    else:
+        raise Exception(f"Ollama Embeddings API error: {response.text}")
 
 
 def is_boilerplate(text: str) -> bool:

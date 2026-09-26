@@ -32,12 +32,25 @@ def check_table_exists():
 
 def push_to_supabase(text_chunk, metadata):
     try:
-        # 1. Generate Embedding using OpenAI
-        response = openai.embeddings.create(
-            input=text_chunk,
-            model="text-embedding-3-small"
-        )
-        embedding = response.data[0].embedding
+        # 1. Generate Embedding using Ollama
+        ollama_url = os.environ.get("OLLAMA_CLOUD_URL", "").replace("/chat/completions", "/embeddings")
+        ollama_key = os.environ.get("OLLAMA_CLOUD_API_KEY", "")
+        
+        headers = {
+            "Authorization": f"Bearer {ollama_key}",
+            "Content-Type": "application/json"
+        }
+        payload = {
+            "model": "nomic-embed-text",
+            "input": text_chunk
+        }
+        resp = requests.post(ollama_url, headers=headers, json=payload, timeout=20)
+        
+        if resp.status_code != 200:
+            print(f"Embedding error: {resp.text}")
+            return False
+            
+        embedding = resp.json()["data"][0]["embedding"]
         
         # 2. Insert into Supabase Table
         data, count = supabase.table("documents").insert({
