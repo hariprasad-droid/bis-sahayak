@@ -1,21 +1,15 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { 
-  Send, ThumbsUp, ThumbsDown, Mic, MicOff, Volume2, VolumeX, 
-  Copy, Check, RotateCw, Plus, Paperclip, Sparkles, Edit3,
-  FileText, ExternalLink, MessageSquarePlus, Shield, ShieldCheck, ShieldAlert, X,
-  Award, CheckCircle, Droplet, Smartphone
+import {
+  Send, ThumbsUp, ThumbsDown, Mic, MicOff, Volume2, VolumeX,
+  Copy, Check, RotateCw, Plus, Sparkles, Edit3,
+  FileText, ExternalLink, Shield, ShieldCheck, ShieldAlert,
+  Award, CheckCircle, Droplet, Smartphone, MessageSquarePlus,
+  Database, Zap, ChevronDown
 } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import ScraperPortal from './ScraperPortal';
-import CallChip from './CallChip';
-import JellyRadio from './JellyRadio';
 import LatticeLoader from './LatticeLoader';
-import ShinyText from './ShinyText';
-import PromptBar from './PromptBar';
-import GlideSelect from './GlideSelect';
-import BranchedMenu from './BranchedMenu';
-import { Download04Icon, Rocket01Icon, Settings02Icon, Message01Icon, Database01Icon } from '@hugeicons/core-free-icons';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || '';
 
@@ -29,37 +23,28 @@ function App() {
   const [isListening, setIsListening] = useState(false);
   const [speakingIndex, setSpeakingIndex] = useState(null);
   const [copiedIndex, setCopiedIndex] = useState(null);
-  const [attachedFile, setAttachedFile] = useState(null);
   const [loadingStartTime, setLoadingStartTime] = useState(null);
-  const [thinkingSeconds, setThinkingSeconds] = useState(0);
   const [activeTab, setActiveTab] = useState('chat');
+  const [langOpen, setLangOpen] = useState(false);
 
   const messagesEndRef = useRef(null);
-  const fileInputRef = useRef(null);
   const recognitionRef = useRef(null);
+  const inputRef = useRef(null);
+
+  const languages = [
+    { value: 'en', label: 'English' },
+    { value: 'hi', label: 'Hindi' },
+    { value: 'ta', label: 'Tamil' },
+    { value: 'te', label: 'Telugu' },
+    { value: 'bn', label: 'Bengali' }
+  ];
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
 
-  useEffect(() => {
-    scrollToBottom();
-  }, [messages, isLoading]);
+  useEffect(() => { scrollToBottom(); }, [messages, isLoading]);
 
-  // Live thinking timer
-  useEffect(() => {
-    let interval;
-    if (isLoading && loadingStartTime) {
-      interval = setInterval(() => {
-        setThinkingSeconds(Math.floor((Date.now() - loadingStartTime) / 1000));
-      }, 100);
-    } else {
-      setThinkingSeconds(0);
-    }
-    return () => clearInterval(interval);
-  }, [isLoading, loadingStartTime]);
-
-  // Setup Web Speech API (Speech Recognition)
   useEffect(() => {
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (SpeechRecognition) {
@@ -67,105 +52,62 @@ function App() {
       recognition.continuous = false;
       recognition.interimResults = true;
       recognition.lang = language === 'hi' ? 'hi-IN' : 'en-US';
-
       recognition.onresult = (event) => {
-        const transcript = Array.from(event.results)
-          .map(result => result[0].transcript)
-          .join('');
+        const transcript = Array.from(event.results).map(r => r[0].transcript).join('');
         setInput(transcript);
       };
-
-      recognition.onend = () => {
-        setIsListening(false);
-      };
-
-      recognition.onerror = (err) => {
-        console.error("Speech recognition error:", err);
-        setIsListening(false);
-      };
-
+      recognition.onend = () => setIsListening(false);
+      recognition.onerror = () => setIsListening(false);
       recognitionRef.current = recognition;
     }
   }, [language]);
 
+  // Close lang dropdown on outside click
+  useEffect(() => {
+    if (!langOpen) return;
+    const handler = (e) => {
+      if (!e.target.closest('.lang-dropdown')) setLangOpen(false);
+    };
+    document.addEventListener('pointerdown', handler);
+    return () => document.removeEventListener('pointerdown', handler);
+  }, [langOpen]);
+
   const toggleListening = () => {
-    if (!recognitionRef.current) {
-      alert("Speech recognition is not supported in this browser.");
-      return;
-    }
-
-    if (isListening) {
-      recognitionRef.current.stop();
-      setIsListening(false);
-    } else {
-      recognitionRef.current.start();
-      setIsListening(true);
-    }
+    if (!recognitionRef.current) return;
+    if (isListening) { recognitionRef.current.stop(); setIsListening(false); }
+    else { recognitionRef.current.start(); setIsListening(true); }
   };
 
-  // Text to Speech
   const speakText = (text, index) => {
-    if (!('speechSynthesis' in window)) {
-      alert("Text-to-speech is not supported in this browser.");
-      return;
-    }
-
-    if (speakingIndex === index) {
-      window.speechSynthesis.cancel();
-      setSpeakingIndex(null);
-      return;
-    }
-
+    if (!('speechSynthesis' in window)) return;
+    if (speakingIndex === index) { window.speechSynthesis.cancel(); setSpeakingIndex(null); return; }
     window.speechSynthesis.cancel();
-    const utterance = new SpeechSynthesisUtterance(text);
-    utterance.lang = language === 'hi' ? 'hi-IN' : 'en-US';
-
-    utterance.onend = () => setSpeakingIndex(null);
-    utterance.onerror = () => setSpeakingIndex(null);
-
+    const u = new SpeechSynthesisUtterance(text);
+    u.lang = language === 'hi' ? 'hi-IN' : 'en-US';
+    u.onend = () => setSpeakingIndex(null);
+    u.onerror = () => setSpeakingIndex(null);
     setSpeakingIndex(index);
-    window.speechSynthesis.speak(utterance);
+    window.speechSynthesis.speak(u);
   };
 
-  // Copy to clipboard
   const copyToClipboard = (text, index) => {
     navigator.clipboard.writeText(text);
     setCopiedIndex(index);
     setTimeout(() => setCopiedIndex(null), 2000);
   };
 
-  // Handle File Selection
-  const handleFileChange = (e) => {
-    if (e.target.files && e.target.files[0]) {
-      setAttachedFile(e.target.files[0]);
-    }
-  };
-
-  // New Chat
   const handleNewChat = () => {
-    setMessages([]);
-    setSessionId(null);
-    setInput('');
-    setAttachedFile(null);
-    window.speechSynthesis?.cancel();
-    setSpeakingIndex(null);
+    setMessages([]); setSessionId(null); setInput('');
+    window.speechSynthesis?.cancel(); setSpeakingIndex(null);
   };
 
   const handleSend = async (customMessage = null) => {
     const textToSend = customMessage || input;
-    if (!textToSend.trim() && !attachedFile) return;
+    if (!textToSend.trim()) return;
 
-    let displayContent = textToSend;
-    if (attachedFile) {
-      displayContent = `[Attached: ${attachedFile.name}]\n${textToSend}`;
-    }
-
-    const userMessage = { role: 'user', content: displayContent, origText: textToSend };
-    setMessages((prev) => [...prev, userMessage]);
-    
-    // Clear input state immediately so UI updates
+    const userMessage = { role: 'user', content: textToSend, origText: textToSend };
+    setMessages(prev => [...prev, userMessage]);
     setInput('');
-    setAttachedFile(null);
     setIsLoading(true);
     setLoadingStartTime(Date.now());
 
@@ -173,80 +115,46 @@ function App() {
       const response = await fetch(`${API_BASE_URL}/chat`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          message: textToSend,
-          language,
-          session_id: sessionId
-        }),
+        body: JSON.stringify({ message: textToSend, language, session_id: sessionId }),
       });
-
       const data = await response.json();
-
-      if (!sessionId) {
-        setSessionId(data.session_id);
-      }
-
+      if (!sessionId) setSessionId(data.session_id);
       const elapsed = Math.max(1, Math.floor((Date.now() - (loadingStartTime || Date.now())) / 1000));
-
-      setMessages((prev) => [
-        ...prev,
-        {
-          id: data.message_id,
-          role: 'assistant',
-          content: data.answer,
-          citations: data.citations,
-          confidence: data.confidence,
-          queryContext: textToSend,
-          thinkTime: elapsed,
-        }
-      ]);
+      setMessages(prev => [...prev, {
+        id: data.message_id, role: 'assistant', content: data.answer,
+        citations: data.citations, confidence: data.confidence,
+        queryContext: textToSend, thinkTime: elapsed,
+      }]);
     } catch (error) {
-      console.error('Error fetching chat response:', error);
-      setMessages((prev) => [
-        ...prev,
-        { role: 'assistant', content: 'An error occurred while connecting to the server. Please check that the backend is running.' }
-      ]);
+      console.error('Error:', error);
+      setMessages(prev => [...prev, {
+        role: 'assistant',
+        content: 'An error occurred while connecting to the server. Please check that the backend is running.'
+      }]);
     } finally {
       setIsLoading(false);
       setLoadingStartTime(null);
     }
   };
 
-  // Regenerate Response
   const handleRegenerate = async (lastUserText) => {
     if (!lastUserText || isLoading) return;
-    setIsLoading(true);
-    setLoadingStartTime(Date.now());
+    setIsLoading(true); setLoadingStartTime(Date.now());
     try {
       const response = await fetch(`${API_BASE_URL}/chat`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          message: lastUserText,
-          language,
-          session_id: sessionId
-        }),
+        body: JSON.stringify({ message: lastUserText, language, session_id: sessionId }),
       });
       const data = await response.json();
       const elapsed = Math.max(1, Math.floor((Date.now() - (loadingStartTime || Date.now())) / 1000));
-      setMessages((prev) => [
-        ...prev,
-        {
-          id: data.message_id,
-          role: 'assistant',
-          content: data.answer,
-          citations: data.citations,
-          confidence: data.confidence,
-          queryContext: lastUserText,
-          thinkTime: elapsed,
-        }
-      ]);
-    } catch (error) {
-      console.error('Error regenerating:', error);
-    } finally {
-      setIsLoading(false);
-      setLoadingStartTime(null);
-    }
+      setMessages(prev => [...prev, {
+        id: data.message_id, role: 'assistant', content: data.answer,
+        citations: data.citations, confidence: data.confidence,
+        queryContext: lastUserText, thinkTime: elapsed,
+      }]);
+    } catch (error) { console.error('Error regenerating:', error); }
+    finally { setIsLoading(false); setLoadingStartTime(null); }
   };
 
   const handleFeedback = async (messageId, isPositive) => {
@@ -254,291 +162,237 @@ function App() {
       await fetch(`${API_BASE_URL}/feedback`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          message_id: messageId,
-          is_positive: isPositive
-        }),
+        body: JSON.stringify({ message_id: messageId, is_positive: isPositive }),
       });
-    } catch (error) {
-      console.error('Error submitting feedback:', error);
-    }
+    } catch (error) { console.error('Error submitting feedback:', error); }
   };
 
-  // Confidence badge component
   const ConfidenceBadge = ({ confidence }) => {
     if (!confidence) return null;
     const config = {
-      high: { icon: ShieldCheck, label: 'High confidence', className: 'confidence-high' },
-      medium: { icon: Shield, label: 'Medium confidence', className: 'confidence-medium' },
-      low: { icon: ShieldAlert, label: 'Low confidence', className: 'confidence-low' },
+      high: { icon: ShieldCheck, label: 'High confidence', cls: 'confidence-high' },
+      medium: { icon: Shield, label: 'Medium confidence', cls: 'confidence-medium' },
+      low: { icon: ShieldAlert, label: 'Low confidence', cls: 'confidence-low' },
     };
     const c = config[confidence] || config.medium;
     const Icon = c.icon;
     return (
-      <span className={`confidence-badge ${c.className}`} title={c.label}>
-        <Icon size={12} />
-        {c.label}
+      <span className={`confidence-badge ${c.cls}`} title={c.label}>
+        <Icon size={12} /> {c.label}
       </span>
     );
   };
 
-  // File type icon helper
-  const getFileIcon = (fileType) => {
-    if (fileType === 'pdf') return '📄';
-    if (fileType === 'html' || fileType === 'htm') return '🌐';
-    if (fileType === 'txt') return '📝';
-    return '📎';
-  };
+  const currentLang = languages.find(l => l.value === language);
 
   return (
     <div className="app-container">
-      {/* Decorative Blob Background */}
-      <div className="ambient-blob blob-1"></div>
-      <div className="ambient-blob blob-2"></div>
-      
+      {/* Ambient Blobs */}
+      <div className="ambient-blob blob-1" />
+      <div className="ambient-blob blob-2" />
+
       {/* Header */}
       <header className="app-header">
         <div className="logo-section">
-          <Sparkles className="sparkle-icon" size={24} />
-          <h1 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 'bold' }}>
-            <ShinyText text="BIS Standards Assistant" speed={3} />
-          </h1>
+          <div className="logo-glow">
+            <Sparkles className="sparkle-icon" size={22} />
+          </div>
+          <h1 className="logo-text">BIS Sahayak</h1>
+          <span className="logo-badge">AI</span>
         </div>
+
         <div className="header-controls">
-          <div className="branched-menu-wrapper" style={{ zIndex: 100 }}>
-            <BranchedMenu
-              items={[
-                {
-                  label: 'App Navigation',
-                  children: [
-                    { value: 'chat', label: 'Chat Assistant', icon: Message01Icon },
-                    { value: 'scraper', label: 'Scraper Portal', icon: Database01Icon },
-                    { value: 'new', label: 'New Chat', icon: Rocket01Icon }
-                  ]
-                }
-              ]}
-              defaultOpen={[0]}
-              defaultActive={activeTab}
-              onSelect={(value) => {
-                if (value === 'new') handleNewChat();
-                else setActiveTab(value);
-              }}
-              color="#f5f5f5"
-              accentColor="#8b5cf6"
-              lineColor="#3f3f46"
-              width={200}
-              rowHeight={32}
-              indent={30}
-              trunk={12}
-              radius={8}
-            />
-          </div>
-          <div className="language-selector" style={{ zIndex: 100 }}>
-            <GlideSelect
-              options={[
-                { value: 'en', label: 'English' },
-                { value: 'hi', label: 'Hindi' },
-                { value: 'ta', label: 'Tamil' },
-                { value: 'te', label: 'Telugu' },
-                { value: 'bn', label: 'Bengali' }
-              ]}
-              defaultValue={language}
-              onChange={(value) => setLanguage(value)}
-              showTags={false}
-              accentColor="#8b5cf6"
-              surfaceColor="rgba(255,255,255,0.05)"
-              highlightColor="rgba(139, 92, 246, 0.4)"
-              textColor="#f5f5f5"
-              size="sm"
-            />
-          </div>
-          <div style={{ transform: 'scale(0.85)', transformOrigin: 'right center' }}>
-            <JellyRadio
-              items={['Low', 'Medium', 'High']}
-              defaultValue="Medium"
-              onChange={(value) => setEffort(value)}
-              chipColor="rgba(255,255,255,0.05)"
-              activeColor="#8b5cf6"
-              textColor="#a1a1aa"
-              activeTextColor="#ffffff"
-              size="sm"
-            />
+          {/* Tab Switcher */}
+          <div className="pill-switcher">
+            <div className="pill-bg" style={{ transform: `translateX(${activeTab === 'chat' ? '0' : '100'}%)` }} />
+            <button className={`pill-btn ${activeTab === 'chat' ? 'active' : ''}`} onClick={() => setActiveTab('chat')}>
+              <Sparkles size={14} /> Chat
+            </button>
+            <button className={`pill-btn ${activeTab === 'scraper' ? 'active' : ''}`} onClick={() => setActiveTab('scraper')}>
+              <Database size={14} /> Scraper
+            </button>
           </div>
 
+          {/* Effort Selector */}
+          <div className="effort-selector">
+            {['Low', 'Medium', 'High'].map(level => (
+              <button
+                key={level}
+                className={`effort-btn ${effort === level ? 'active' : ''}`}
+                onClick={() => setEffort(level)}
+              >
+                {level === 'High' && <Zap size={12} />}
+                {level}
+              </button>
+            ))}
+          </div>
+
+          {/* Language Dropdown */}
+          <div className="lang-dropdown">
+            <button className="lang-trigger" onClick={() => setLangOpen(!langOpen)}>
+              <span>{currentLang?.label}</span>
+              <ChevronDown size={14} className={`chevron ${langOpen ? 'open' : ''}`} />
+            </button>
+            {langOpen && (
+              <div className="lang-menu">
+                {languages.map(lang => (
+                  <button
+                    key={lang.value}
+                    className={`lang-option ${language === lang.value ? 'selected' : ''}`}
+                    onClick={() => { setLanguage(lang.value); setLangOpen(false); }}
+                  >
+                    {lang.label}
+                    {language === lang.value && <Check size={14} />}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* New Chat */}
+          <button className="new-chat-btn" onClick={handleNewChat} title="New Chat">
+            <MessageSquarePlus size={16} />
+          </button>
         </div>
       </header>
 
-      {/* Main Chat Stream */}
+      {/* Main Content */}
       {activeTab === 'chat' ? (
-      <React.Fragment>
-      <main className="chat-container">
-        {messages.length === 0 && (
-          <div className="empty-state">
-            <Sparkles size={48} className="empty-icon" />
-            <h2>How can I assist you with Indian Standards today?</h2>
-            <p>Ask about BIS certifications, ISI mark schemes, Hallmarking, product compliance, Quality Control Orders, or any BIS guideline.</p>
-            <div className="quick-prompts staggered-reveal">
-              <button style={{animationDelay: '0.1s', display: 'flex', alignItems: 'center', gap: '6px'}} onClick={() => handleSend("What is the hallmarking process for gold jewellery?")}>
-                <Award size={16} className="text-active" /> Hallmarking process
-              </button>
-              <button style={{animationDelay: '0.2s', display: 'flex', alignItems: 'center', gap: '6px'}} onClick={() => handleSend("How to get ISI mark for my product?")}>
-                <CheckCircle size={16} className="text-active" /> ISI Mark process
-              </button>
-              <button style={{animationDelay: '0.3s', display: 'flex', alignItems: 'center', gap: '6px'}} onClick={() => handleSend("What is the permissible limit of Lead in Packaged Drinking Water as per IS 14543?")}>
-                <Droplet size={16} className="text-active" /> IS 14543 Drinking Water
-              </button>
-              <button style={{animationDelay: '0.4s', display: 'flex', alignItems: 'center', gap: '6px'}} onClick={() => handleSend("What is CRS scheme for electronics?")}>
-                <Smartphone size={16} className="text-active" /> CRS for electronics
-              </button>
-            </div>
-          </div>
-        )}
-
-        {messages.map((msg, index) => (
-          <div key={index} className={`message-wrapper ${msg.role}`}>
-            <div className="message-block">
-              {/* Thought badge for assistant */}
-              {msg.role === 'assistant' && (
-                <div className="thought-badge">
-                  <span>Thought for {msg.thinkTime || 3}s</span>
-                  {msg.confidence && <ConfidenceBadge confidence={msg.confidence} />}
+        <>
+          <main className="chat-container">
+            {messages.length === 0 && (
+              <div className="empty-state">
+                <div className="empty-icon-wrap">
+                  <Sparkles size={40} className="empty-icon" />
                 </div>
-              )}
-
-              <div className={`message-bubble ${msg.role}`}>
-                {msg.role === 'assistant' ? (
-                  <div className="message-content markdown-body">
-                    <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                      {msg.content}
-                    </ReactMarkdown>
-                  </div>
-                ) : (
-                  <p className="message-content">{msg.content}</p>
-                )}
-
-                {/* Citations section */}
-                {msg.role === 'assistant' && msg.citations && msg.citations.length > 0 && (
-                  <div className="citations">
-                    <span className="cit-label">
-                      <FileText size={12} />
-                      Sources:
-                    </span>
-                    {msg.citations.map((cit, i) => {
-                      const sourcePath = (cit.source || cit.title || '').replace(/\\/g, '/');
-                      const fileUrl = `${API_BASE_URL}/source/${encodeURI(sourcePath)}`;
-                      const fileIcon = getFileIcon(cit.file_type);
-                      return (
-                        <a
-                          key={i}
-                          className="citation-chip"
-                          title={`Click to open: ${cit.title || sourcePath}`}
-                          href={fileUrl}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                        >
-                          <span className="cit-icon">{fileIcon}</span>
-                          <span className="cit-title">{cit.title || sourcePath}</span>
-                          <ExternalLink size={10} className="cit-external" />
-                        </a>
-                      );
-                    })}
-                  </div>
-                )}
+                <h2>How can I assist you with Indian Standards?</h2>
+                <p>Ask about BIS certifications, ISI mark, Hallmarking, CRS, Quality Control Orders, or any BIS guideline.</p>
+                <div className="quick-prompts">
+                  {[
+                    { icon: Award, text: 'Hallmarking process', q: 'What is the hallmarking process for gold jewellery?' },
+                    { icon: CheckCircle, text: 'ISI Mark process', q: 'How to get ISI mark for my product?' },
+                    { icon: Droplet, text: 'IS 14543 Water', q: 'What is the permissible limit of Lead in Packaged Drinking Water as per IS 14543?' },
+                    { icon: Smartphone, text: 'CRS for electronics', q: 'What is CRS scheme for electronics?' },
+                  ].map(({ icon: Icon, text, q }, i) => (
+                    <button key={i} className="prompt-card" style={{ animationDelay: `${i * 0.08}s` }} onClick={() => handleSend(q)}>
+                      <Icon size={18} />
+                      <span>{text}</span>
+                    </button>
+                  ))}
+                </div>
               </div>
+            )}
 
-              {/* Action Toolbar */}
-              {msg.role === 'assistant' && (
-                <div className="action-toolbar">
-                  <button onClick={() => copyToClipboard(msg.content, index)} title="Copy">
-                    {copiedIndex === index ? <Check size={16} className="text-green" /> : <Copy size={16} />}
-                  </button>
-                  <button onClick={() => speakText(msg.content, index)} title="Read Aloud">
-                    {speakingIndex === index ? <VolumeX size={16} className="text-active" /> : <Volume2 size={16} />}
-                  </button>
-                  <button onClick={() => handleFeedback(msg.id, true)} title="Good response">
-                    <ThumbsUp size={16} />
-                  </button>
-                  <button onClick={() => handleFeedback(msg.id, false)} title="Bad response">
-                    <ThumbsDown size={16} />
-                  </button>
-                  <button onClick={() => handleRegenerate(msg.queryContext || messages[index-1]?.content)} title="Regenerate">
-                    <RotateCw size={16} />
-                  </button>
+            {messages.map((msg, index) => (
+              <div key={index} className={`message-wrapper ${msg.role}`}>
+                <div className="message-block">
+                  {msg.role === 'assistant' && (
+                    <div className="thought-badge">
+                      <span>Thought for {msg.thinkTime || 3}s</span>
+                      {msg.confidence && <ConfidenceBadge confidence={msg.confidence} />}
+                    </div>
+                  )}
+
+                  <div className={`message-bubble ${msg.role}`}>
+                    {msg.role === 'assistant' ? (
+                      <div className="message-content markdown-body">
+                        <ReactMarkdown remarkPlugins={[remarkGfm]}>{msg.content}</ReactMarkdown>
+                      </div>
+                    ) : (
+                      <p className="message-content">{msg.content}</p>
+                    )}
+
+                    {msg.role === 'assistant' && msg.citations && msg.citations.length > 0 && (
+                      <div className="citations">
+                        <span className="cit-label"><FileText size={12} /> Sources:</span>
+                        {msg.citations.map((cit, i) => {
+                          const sourcePath = (cit.source || cit.title || '').replace(/\\/g, '/');
+                          return (
+                            <a key={i} className="citation-chip" href={`${API_BASE_URL}/source/${encodeURI(sourcePath)}`} target="_blank" rel="noopener noreferrer">
+                              <FileText size={10} />
+                              <span className="cit-title">{cit.title || sourcePath}</span>
+                              <ExternalLink size={10} className="cit-external" />
+                            </a>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+
+                  {msg.role === 'assistant' && (
+                    <div className="action-toolbar">
+                      <button onClick={() => copyToClipboard(msg.content, index)} title="Copy">
+                        {copiedIndex === index ? <Check size={15} className="text-green" /> : <Copy size={15} />}
+                      </button>
+                      <button onClick={() => speakText(msg.content, index)} title="Read Aloud">
+                        {speakingIndex === index ? <VolumeX size={15} className="text-active" /> : <Volume2 size={15} />}
+                      </button>
+                      <button onClick={() => handleFeedback(msg.id, true)} title="Good"><ThumbsUp size={15} /></button>
+                      <button onClick={() => handleFeedback(msg.id, false)} title="Bad"><ThumbsDown size={15} /></button>
+                      <button onClick={() => handleRegenerate(msg.queryContext || messages[index - 1]?.content)} title="Regenerate"><RotateCw size={15} /></button>
+                    </div>
+                  )}
+
+                  {msg.role === 'user' && (
+                    <div className="user-action-toolbar">
+                      <button onClick={() => handleRegenerate(msg.content)} title="Retry"><RotateCw size={15} /></button>
+                      <button onClick={() => setInput(msg.origText || msg.content)} title="Edit"><Edit3 size={15} /></button>
+                      <button onClick={() => copyToClipboard(msg.content, index)} title="Copy">
+                        {copiedIndex === index ? <Check size={15} /> : <Copy size={15} />}
+                      </button>
+                    </div>
+                  )}
                 </div>
-              )}
+              </div>
+            ))}
 
-              {msg.role === 'user' && (
-                <div className="user-action-toolbar">
-                  <button onClick={() => handleRegenerate(msg.content)} title="Retry">
-                    <RotateCw size={16} />
-                  </button>
-                  <button onClick={() => setInput(msg.origText || msg.content)} title="Edit prompt">
-                    <Edit3 size={16} />
-                  </button>
-                  <button onClick={() => copyToClipboard(msg.content, index)} title="Copy">
-                    {copiedIndex === index ? <Check size={16} /> : <Copy size={16} />}
-                  </button>
+            {isLoading && (
+              <div className="message-wrapper assistant">
+                <div className="message-block" style={{ marginLeft: '12px' }}>
+                  <LatticeLoader status="working" label="AI Thinking" grid={3} shape="round" cellSize={6} gap={2} fontSize={12} step={90} idleOpacity={0.15} glow showTimer />
                 </div>
-              )}
-            </div>
-          </div>
-        ))}
+              </div>
+            )}
+            <div ref={messagesEndRef} />
+          </main>
 
-        {isLoading && (
-          <div className="message-wrapper assistant">
-            <div className="message-block" style={{ marginLeft: '12px' }}>
-              <LatticeLoader
-                status="working"
-                label="AI Thinking"
-                pattern="orbit"
-                grid={3}
-                shape="round"
-                cellSize={6}
-                gap={2}
-                fontSize={12}
-                step={90}
-                idleOpacity={0.15}
-                glow={true}
-                showTimer={true}
+          {/* Input Bar */}
+          <footer className="input-area-wrapper">
+            <div className="input-bar">
+              <textarea
+                ref={inputRef}
+                className="chat-input"
+                rows={1}
+                value={input}
+                onChange={(e) => {
+                  setInput(e.target.value);
+                  e.target.style.height = '0';
+                  e.target.style.height = Math.min(e.target.scrollHeight, 140) + 'px';
+                }}
+                onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend(); } }}
+                placeholder="Ask about BIS standards, hallmarking, ISI mark, CRS..."
               />
+
+              <div className="input-actions">
+                <button type="button" className={`input-icon-btn ${isListening ? 'listening' : ''}`} onClick={toggleListening} title="Voice">
+                  {isListening ? <MicOff size={18} /> : <Mic size={18} />}
+                </button>
+                <button
+                  type="button"
+                  className={`send-btn ${input.trim() ? 'armed' : ''}`}
+                  onClick={() => handleSend()}
+                  disabled={isLoading || !input.trim()}
+                  title="Send"
+                >
+                  <Send size={16} />
+                </button>
+              </div>
             </div>
-          </div>
-        )}
-        <div ref={messagesEndRef} />
-      </main>
-
-      {/* Input Bar */}
-      <footer className="input-area-wrapper" style={{ paddingBottom: '30px', zIndex: 90 }}>
-        <PromptBar
-          placeholder="Ask about BIS standards, hallmarking, ISI mark, CRS..."
-          efforts={['Low', 'Medium', 'High']}
-          defaultEffort={effort}
-          onEffortChange={setEffort}
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
-          busy={isLoading}
-          onSend={(text, { attachments, model, effort }) => {
-            handleSend(text);
-          }}
-          onStop={() => setIsLoading(false)}
-          background="rgba(255,255,255,0.03)"
-          color="#f5f5f5"
-          menuBackground="#18181b"
-          sparkColor="#8b5cf6"
-          sparkBoost={1}
-          width="100%"
-          maxRows={4}
-          radius={20}
-          className="awwwards-prompt-bar"
-        />
-      </footer>
-
-      </React.Fragment>
+          </footer>
+        </>
       ) : (
         <ScraperPortal />
       )}
-
-
     </div>
   );
 }
