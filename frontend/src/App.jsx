@@ -12,6 +12,10 @@ import CallChip from './CallChip';
 import JellyRadio from './JellyRadio';
 import LatticeLoader from './LatticeLoader';
 import ShinyText from './ShinyText';
+import PromptBar from './PromptBar';
+import GlideSelect from './GlideSelect';
+import BranchedMenu from './BranchedMenu';
+import { Download04Icon, Rocket01Icon, Settings02Icon, Message01Icon, Database01Icon } from '@hugeicons/core-free-icons';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || '';
 
@@ -158,6 +162,8 @@ function App() {
 
     const userMessage = { role: 'user', content: displayContent, origText: textToSend };
     setMessages((prev) => [...prev, userMessage]);
+    
+    // Clear input state immediately so UI updates
     setInput('');
     setAttachedFile(null);
     setIsLoading(true);
@@ -299,26 +305,52 @@ function App() {
           </h1>
         </div>
         <div className="header-controls">
-          <div className="tab-switcher">
-            <button className={`tab-btn ${activeTab === 'chat' ? 'active' : ''}`} onClick={() => setActiveTab('chat')}>Chat</button>
-            <button className={`tab-btn ${activeTab === 'scraper' ? 'active' : ''}`} onClick={() => setActiveTab('scraper')}>Scraper Portal</button>
+          <div className="branched-menu-wrapper" style={{ zIndex: 100 }}>
+            <BranchedMenu
+              items={[
+                {
+                  label: 'App Navigation',
+                  children: [
+                    { value: 'chat', label: 'Chat Assistant', icon: Message01Icon },
+                    { value: 'scraper', label: 'Scraper Portal', icon: Database01Icon },
+                    { value: 'new', label: 'New Chat', icon: Rocket01Icon }
+                  ]
+                }
+              ]}
+              defaultOpen={[0]}
+              defaultActive={activeTab}
+              onSelect={(value) => {
+                if (value === 'new') handleNewChat();
+                else setActiveTab(value);
+              }}
+              color="#f5f5f5"
+              accentColor="#8b5cf6"
+              lineColor="#3f3f46"
+              width={200}
+              rowHeight={32}
+              indent={30}
+              trunk={12}
+              radius={8}
+            />
           </div>
-          <button className="new-chat-btn" onClick={handleNewChat} title="New Chat">
-            <MessageSquarePlus size={18} />
-            <span>New Chat</span>
-          </button>
-          <div className="language-selector">
-            <select 
-              id="lang" 
-              value={language} 
-              onChange={(e) => setLanguage(e.target.value)}
-            >
-              <option value="en">English</option>
-              <option value="hi">Hindi</option>
-              <option value="ta">Tamil</option>
-              <option value="te">Telugu</option>
-              <option value="bn">Bengali</option>
-            </select>
+          <div className="language-selector" style={{ zIndex: 100 }}>
+            <GlideSelect
+              options={[
+                { value: 'en', label: 'English' },
+                { value: 'hi', label: 'Hindi' },
+                { value: 'ta', label: 'Tamil' },
+                { value: 'te', label: 'Telugu' },
+                { value: 'bn', label: 'Bengali' }
+              ]}
+              defaultValue={language}
+              onChange={(value) => setLanguage(value)}
+              showTags={false}
+              accentColor="#8b5cf6"
+              surfaceColor="rgba(255,255,255,0.05)"
+              highlightColor="rgba(139, 92, 246, 0.4)"
+              textColor="#f5f5f5"
+              size="sm"
+            />
           </div>
           <div style={{ transform: 'scale(0.85)', transformOrigin: 'right center' }}>
             <JellyRadio
@@ -476,63 +508,31 @@ function App() {
       </main>
 
       {/* Input Bar */}
-      <footer className="input-area-wrapper">
-        {attachedFile && (
-          <div className="attached-file-tag">
-            <Paperclip size={14} />
-            <span>{attachedFile.name}</span>
-            <button onClick={() => setAttachedFile(null)}>×</button>
-          </div>
-        )}
-        <div className="input-bar">
-          <input 
-            type="file" 
-            ref={fileInputRef} 
-            style={{ display: 'none' }} 
-            onChange={handleFileChange}
-          />
-          <button 
-            type="button"
-            className="icon-btn attach-btn" 
-            onClick={() => fileInputRef.current?.click()}
-            title="Attach file"
-          >
-            <Plus size={20} />
-          </button>
-
-          <input
-            type="text"
-            className="chat-input"
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyDown={(e) => e.key === 'Enter' && handleSend()}
-            placeholder="Ask about BIS standards, hallmarking, ISI mark, CRS..."
-          />
-
-          <div className="input-controls-right">
-            <button 
-              type="button"
-              className={`icon-btn mic-btn ${isListening ? 'listening' : ''}`}
-              onClick={toggleListening}
-              title={isListening ? "Stop Listening" : "Voice Input"}
-            >
-              {isListening ? <MicOff size={18} /> : <Mic size={18} />}
-            </button>
-
-            <button 
-              type="button"
-              className="icon-btn send-btn"
-              onClick={() => handleSend()}
-              disabled={isLoading || (!input.trim() && !attachedFile)}
-              title="Send"
-            >
-              <div className="waveform-icon">
-                <Send size={18} />
-              </div>
-            </button>
-          </div>
-        </div>
+      <footer className="input-area-wrapper" style={{ paddingBottom: '30px', zIndex: 90 }}>
+        <PromptBar
+          placeholder="Ask about BIS standards, hallmarking, ISI mark, CRS..."
+          efforts={['Low', 'Medium', 'High']}
+          defaultEffort={effort}
+          onEffortChange={setEffort}
+          value={input}
+          onChange={(e) => setInput(e.target.value)}
+          busy={isLoading}
+          onSend={(text, { attachments, model, effort }) => {
+            handleSend(text);
+          }}
+          onStop={() => setIsLoading(false)}
+          background="rgba(255,255,255,0.03)"
+          color="#f5f5f5"
+          menuBackground="#18181b"
+          sparkColor="#8b5cf6"
+          sparkBoost={1}
+          width="100%"
+          maxRows={4}
+          radius={20}
+          className="awwwards-prompt-bar"
+        />
       </footer>
+
       </React.Fragment>
       ) : (
         <ScraperPortal />
