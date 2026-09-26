@@ -148,7 +148,7 @@ def retrieve_chunks(query: str, top_k: int = 40):
         # Call the Supabase RPC function (match_documents)
         response = client.rpc(
             'match_documents',
-            {'query_embedding': query_embedding, 'match_threshold': 0.1, 'match_count': top_k}
+            {'query_embedding': query_embedding, 'match_threshold': 0.0, 'match_count': top_k}
         ).execute()
         
         if not response.data:
