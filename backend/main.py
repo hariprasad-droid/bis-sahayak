@@ -64,6 +64,30 @@ class SimplifyTextRequest(BaseModel):
     text: str
     language: str = "en"
 
+@app.post("/ingest")
+async def trigger_ingestion(background_tasks: BackgroundTasks):
+    """Triggers the Supabase document ingestion script in the background."""
+    def run_ingestion():
+        import subprocess
+        try:
+            print("Starting background ingestion...")
+            result = subprocess.run(
+                ["python", "supabase_ingest.py"], 
+                cwd=str(BASE_DIR),
+                capture_output=True,
+                text=True
+            )
+            print(f"Ingestion finished with code {result.returncode}")
+            if result.stdout:
+                print("STDOUT:", result.stdout)
+            if result.stderr:
+                print("STDERR:", result.stderr)
+        except Exception as e:
+            print(f"Ingestion failed: {e}")
+            
+    background_tasks.add_task(run_ingestion)
+    return {"status": "success", "message": "Ingestion started in the background. Check server logs for progress."}
+
 @app.post("/simplify")
 async def simplify_text_endpoint(req: SimplifyTextRequest):
     """
