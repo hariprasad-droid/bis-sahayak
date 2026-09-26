@@ -6,5 +6,5 @@ pymupdf
 beautifulsoup4
 python-dotenv
 supabase
-openai
+requests
 psycopg2-binary
