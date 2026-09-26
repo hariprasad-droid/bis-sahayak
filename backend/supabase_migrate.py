@@ -2,7 +2,7 @@ import os
 import json
 from pathlib import Path
 from dotenv import load_dotenv
-import openai
+
 from supabase import create_client
 
 BASE_DIR = Path(__file__).resolve().parent
@@ -17,7 +17,7 @@ if not all([SUPABASE_URL, SUPABASE_KEY, OPENAI_API_KEY]):
     exit(1)
 
 supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
-openai.api_key = OPENAI_API_KEY
+
 
 def check_table_exists():
     try:
