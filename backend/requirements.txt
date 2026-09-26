@@ -1,0 +1,10 @@
+fastapi
+uvicorn
+pydantic
+sqlalchemy
+pymupdf
+beautifulsoup4
+python-dotenv
+supabase
+openai
+psycopg2-binary
