@@ -10,6 +10,7 @@ import ScraperPortal from './ScraperPortal';
 import CallChip from './CallChip';
 import JellyRadio from './JellyRadio';
 import LatticeLoader from './LatticeLoader';
+import ShinyText from './ShinyText';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || '';
 
@@ -284,11 +285,17 @@ function App() {
 
   return (
     <div className="app-container">
+      {/* Decorative Blob Background */}
+      <div className="ambient-blob blob-1"></div>
+      <div className="ambient-blob blob-2"></div>
+      
       {/* Header */}
       <header className="app-header">
         <div className="logo-section">
-          <Sparkles className="sparkle-icon" size={20} />
-          <h1>BIS Standards Assistant</h1>
+          <Sparkles className="sparkle-icon" size={24} />
+          <h1 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 'bold' }}>
+            <ShinyText text="BIS Standards Assistant" speed={3} />
+          </h1>
         </div>
         <div className="header-controls">
           <div className="tab-switcher">
@@ -337,17 +344,17 @@ function App() {
             <Sparkles size={48} className="empty-icon" />
             <h2>How can I assist you with Indian Standards today?</h2>
             <p>Ask about BIS certifications, ISI mark schemes, Hallmarking, product compliance, Quality Control Orders, or any BIS guideline.</p>
-            <div className="quick-prompts">
-              <button onClick={() => handleSend("What is the hallmarking process for gold jewellery?")}>
+            <div className="quick-prompts staggered-reveal">
+              <button style={{animationDelay: '0.1s'}} onClick={() => handleSend("What is the hallmarking process for gold jewellery?")}>
                 🏅 Hallmarking process
               </button>
-              <button onClick={() => handleSend("How to get ISI mark for my product?")}>
+              <button style={{animationDelay: '0.2s'}} onClick={() => handleSend("How to get ISI mark for my product?")}>
                 ✅ ISI Mark process
               </button>
-              <button onClick={() => handleSend("What is the permissible limit of Lead in Packaged Drinking Water as per IS 14543?")}>
+              <button style={{animationDelay: '0.3s'}} onClick={() => handleSend("What is the permissible limit of Lead in Packaged Drinking Water as per IS 14543?")}>
                 💧 IS 14543 Drinking Water
               </button>
-              <button onClick={() => handleSend("What is CRS scheme for electronics?")}>
+              <button style={{animationDelay: '0.4s'}} onClick={() => handleSend("What is CRS scheme for electronics?")}>
                 📱 CRS for electronics
               </button>
             </div>

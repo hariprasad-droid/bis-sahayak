@@ -1,37 +1,20 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState } from 'react';
 
 const JellyRadio = ({
   items,
   defaultValue,
   onChange,
-  chipColor = '#27272a',
-  activeColor = '#f5f5f5',
-  textColor = '#f5f5f5',
-  activeTextColor = '#18181b',
+  chipColor = 'rgba(255,255,255,0.03)',
+  activeColor = '#8b5cf6',
+  textColor = '#a1a1aa',
+  activeTextColor = '#ffffff',
   size = 'md',
-  gap = 8,
-  radius = 18,
+  gap = 4,
+  radius = 20,
 }) => {
   const [activeIdx, setActiveIdx] = useState(() => {
     return items.findIndex(item => (typeof item === 'string' ? item : item.value) === defaultValue) || 0;
   });
-  
-  const [sliderStyle, setSliderStyle] = useState({});
-  const containerRef = useRef(null);
-  const itemRefs = useRef([]);
-
-  useEffect(() => {
-    if (itemRefs.current[activeIdx] && containerRef.current) {
-      const activeElement = itemRefs.current[activeIdx];
-      const containerRect = containerRef.current.getBoundingClientRect();
-      const itemRect = activeElement.getBoundingClientRect();
-      
-      setSliderStyle({
-        width: `${itemRect.width}px`,
-        transform: `translateX(${itemRect.left - containerRect.left}px)`,
-      });
-    }
-  }, [activeIdx, items]);
 
   const handleSelect = (index) => {
     const item = items[index];
@@ -46,10 +29,10 @@ const JellyRadio = ({
 
   const getPadding = () => {
     switch (size) {
-      case 'sm': return '4px 10px';
+      case 'sm': return '6px 14px';
       case 'lg': return '10px 24px';
       case 'md':
-      default: return '6px 16px';
+      default: return '8px 18px';
     }
   };
 
@@ -58,35 +41,36 @@ const JellyRadio = ({
       case 'sm': return '0.75rem';
       case 'lg': return '1rem';
       case 'md':
-      default: return '0.875rem';
+      default: return '0.85rem';
     }
   };
 
   return (
     <div 
-      ref={containerRef}
       style={{
-        display: 'inline-flex',
+        display: 'flex',
         alignItems: 'center',
-        gap: `${gap}px`,
         position: 'relative',
         background: chipColor,
         padding: '4px',
         borderRadius: `${radius + 4}px`,
-        border: '1px solid rgba(255,255,255,0.05)',
+        border: '1px solid rgba(255,255,255,0.08)',
+        boxShadow: 'inset 0 2px 10px rgba(0,0,0,0.2)'
       }}
     >
-      {/* The animated "Jelly" Slider background */}
+      {/* Animated Background Slider */}
       <div 
         style={{
           position: 'absolute',
           top: '4px',
           bottom: '4px',
-          left: 0,
+          left: '4px',
+          width: `calc((100% - 8px) / ${items.length})`,
+          transform: `translateX(calc(100% * ${activeIdx}))`,
           backgroundColor: activeColor,
           borderRadius: `${radius}px`,
-          transition: 'all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1)',
-          ...sliderStyle
+          transition: 'transform 0.5s cubic-bezier(0.34, 1.56, 0.64, 1)',
+          boxShadow: '0 2px 10px rgba(139, 92, 246, 0.4)'
         }}
       />
 
@@ -100,17 +84,17 @@ const JellyRadio = ({
         return (
           <button
             key={isString ? item : item.value}
-            ref={el => itemRefs.current[i] = el}
             onClick={() => handleSelect(i)}
             disabled={disabled}
             style={{
               position: 'relative',
               zIndex: 1,
+              flex: 1,
               background: 'transparent',
               border: 'none',
               padding: getPadding(),
               fontSize: getFontSize(),
-              fontWeight: 600,
+              fontWeight: isActive ? 600 : 500,
               color: isActive ? activeTextColor : textColor,
               cursor: disabled ? 'not-allowed' : 'pointer',
               opacity: disabled ? 0.4 : 1,
@@ -118,11 +102,13 @@ const JellyRadio = ({
               transition: 'color 0.3s ease',
               display: 'flex',
               alignItems: 'center',
+              justifyContent: 'center',
               gap: '6px',
               fontFamily: 'inherit',
+              whiteSpace: 'nowrap'
             }}
           >
-            {icon && <span style={{ display: 'flex', alignItems: 'center' }}>{icon}</span>}
+            {icon && <span>{icon}</span>}
             {label}
           </button>
         );
