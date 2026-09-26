@@ -7,6 +7,7 @@ import {
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import ScraperPortal from './ScraperPortal';
+import CallChip from './CallChip';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || '';
 
@@ -430,16 +431,23 @@ function App() {
 
         {isLoading && (
           <div className="message-wrapper assistant">
-            <div className="message-block">
-              <div className="thought-badge pulsing">
-                <span>Thinking for {thinkingSeconds}s...</span>
-              </div>
-              <div className="message-bubble assistant loading">
-                <div className="loading-dots">
-                  <span></span><span></span><span></span>
-                </div>
-                Searching knowledge base...
-              </div>
+            <div className="message-block" style={{ marginLeft: '12px' }}>
+              <CallChip
+                icon="database"
+                name="AI Generating"
+                argument="Searching BIS knowledge base..."
+                status="running"
+                expectedMs={4500}
+                size={34}
+                radius={12}
+                color="#e4e4e7"
+                surfaceColor="#121212"
+                progressColor="#8b5cf6"
+                progressOpacity={0.2}
+                doneColor="#22c55e"
+                errorColor="#ef4444"
+                showTimer={true}
+              />
             </div>
           </div>
         )}
