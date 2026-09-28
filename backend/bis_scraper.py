@@ -138,7 +138,7 @@ USER_AGENT = (
 )
 
 OUT_DIR = "data/raw"
-MANIFEST_PATH = "data/sources.json"
+MANIFEST_PATH = "data/mega_scraper_manifest.json"
 FAILED_LOG_PATH = "data/failed_urls.txt"
 
 REQUEST_TIMEOUT = 45          # generous — some BIS PDFs are large and slow
