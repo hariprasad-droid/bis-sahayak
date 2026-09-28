@@ -322,7 +322,7 @@ async def scraper_status():
 
 @app.get("/scraper/manifest")
 async def scraper_manifest():
-    manifest_path = BASE_DIR / "data" / "sources.json"
+    manifest_path = BASE_DIR / "data" / "mega_scraper_manifest.json"
     if not manifest_path.exists():
         return []
         

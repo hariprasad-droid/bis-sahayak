@@ -9,6 +9,7 @@ import {
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import LatticeLoader from './LatticeLoader';
+import ScraperPortal from './ScraperPortal';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || '';
 
@@ -25,6 +26,7 @@ function App() {
   const [loadingStartTime, setLoadingStartTime] = useState(null);
   const [langOpen, setLangOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [showScraper, setShowScraper] = useState(false);
   const [settings, setSettings] = useState({});
   const [tempLogoUrl, setTempLogoUrl] = useState('');
 
@@ -271,6 +273,10 @@ function App() {
           <button className="new-chat-btn" onClick={handleNewChat} title="New Chat" style={{ marginRight: '8px' }}>
             <MessageSquarePlus size={16} />
           </button>
+          {/* Scraper Portal */}
+          <button className="new-chat-btn" onClick={() => setShowScraper(!showScraper)} title="Scraper Portal" style={{ marginRight: '8px' }}>
+            <Database size={16} />
+          </button>
           
           {/* Settings */}
           <button className="new-chat-btn" onClick={() => setSettingsOpen(true)} title="Settings">
@@ -280,7 +286,11 @@ function App() {
       </header>
 
       {/* Main Content */}
-      <main className="chat-container">
+      {showScraper ? (
+        <ScraperPortal />
+      ) : (
+        <>
+          <main className="chat-container">
             {messages.length === 0 && (
               <div className="empty-state">
                 <div className="empty-icon-wrap">
@@ -410,6 +420,8 @@ function App() {
               </div>
             </div>
           </footer>
+        </>
+      )}
 
       {/* Settings Modal */}
       {settingsOpen && (

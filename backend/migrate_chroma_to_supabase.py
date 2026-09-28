@@ -9,12 +9,12 @@ import time
 BASE_DIR = Path(__file__).resolve().parent
 load_dotenv(BASE_DIR / ".env")
 
-SUPABASE_URL = os.environ.get("SUPABASE_URL")
-SUPABASE_KEY = os.environ.get("SUPABASE_KEY")
-OLLAMA_CLOUD_API_KEY = os.environ.get("OLLAMA_CLOUD_API_KEY")
+SUPABASE_URL = os.environ.get("SUPABASE_URL", "")
+SUPABASE_KEY = os.environ.get("SUPABASE_KEY", "")
+OLLAMA_CLOUD_API_KEY = os.environ.get("OLLAMA_CLOUD_API_KEY", "")
 OLLAMA_URL = os.environ.get("OLLAMA_CLOUD_URL", "").replace("/chat/completions", "/embeddings")
 
-if not all([SUPABASE_URL, SUPABASE_KEY, OLLAMA_CLOUD_API_KEY]):
+if not SUPABASE_URL or not SUPABASE_KEY or not OLLAMA_CLOUD_API_KEY:
     print("Missing environment variables. Check .env")
     exit(1)
 
@@ -23,13 +23,20 @@ client = chromadb.PersistentClient(path=str(BASE_DIR / "vectorstore"))
 collection = client.get_or_create_collection(name="bis_knowledge_base")
 
 docs = collection.get(include=["documents", "metadatas"])
-total_docs = len(docs["documents"])
+documents = docs.get("documents")
+metadatas = docs.get("metadatas")
+
+if not documents or not metadatas:
+    print("No documents found in local ChromaDB.")
+    exit(0)
+
+total_docs = len(documents)
 print(f"Found {total_docs} documents in local ChromaDB.")
 
 success_count = 0
 for i in range(total_docs):
-    text = docs["documents"][i]
-    metadata = docs["metadatas"][i]
+    text = documents[i]
+    metadata = metadatas[i]
     
     # 1. Get Embedding
     headers = {
@@ -48,7 +55,7 @@ for i in range(total_docs):
             # 2. Push to Supabase
             supabase.table("documents").insert({
                 "content": text,
-                "metadata": metadata,
+                "metadata": metadata, # type: ignore
                 "embedding": embedding
             }).execute()
             
