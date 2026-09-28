@@ -155,13 +155,13 @@ def main():
     html_dir = DATA_DIR / "html"
     if html_dir.exists():
         html_files = sorted(list(html_dir.glob("*.html")) + list(html_dir.glob("*.htm")))
-        for f in html_files:
+        for f in html_files[:40]:
             total += ingest_file(f)
     
     # 3. PDF files
     pdf_dir = DATA_DIR / "pdf"
     if pdf_dir.exists():
-        for f in sorted(pdf_dir.glob("*.pdf")):
+        for f in sorted(pdf_dir.glob("*.pdf"))[:20]:
             total += ingest_file(f)
     
     print(f"\n{'='*50}")

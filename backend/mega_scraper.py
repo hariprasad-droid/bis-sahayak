@@ -1034,6 +1034,16 @@ def run_all(source_filter: str | None = None, max_pages: int = 500, delay: float
     if FAILED_LOG_PATH.exists():
         log.info("  Failures logged: %s", FAILED_LOG_PATH)
 
+    log.info("Triggering data ingestion to Supabase DB...")
+    import subprocess
+    import sys
+    try:
+        # Run ingestion script
+        subprocess.run([sys.executable, str(BASE_DIR / "supabase_ingest.py")], check=True)
+        log.info("Ingestion completed successfully.")
+    except Exception as e:
+        log.error("Failed to run ingestion: %s", e)
+
 
 def main():
     parser = argparse.ArgumentParser(
