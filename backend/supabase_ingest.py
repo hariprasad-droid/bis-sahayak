@@ -45,20 +45,20 @@ def detect_category(filename):
 
 _embedding_model = None
 def get_embedding_hf(text):
-    """Get 768-dim embedding using local sentence-transformers."""
+    """Get 768-dim embedding using fastembed."""
     global _embedding_model
     if _embedding_model is None:
-        from sentence_transformers import SentenceTransformer
+        from fastembed import TextEmbedding
         import warnings
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
-            print("Loading local embedding model...", end=" ", flush=True)
-            _embedding_model = SentenceTransformer("nomic-ai/nomic-embed-text-v1.5", trust_remote_code=True)
+            print("Loading fastembed model...", end=" ", flush=True)
+            _embedding_model = TextEmbedding("nomic-ai/nomic-embed-text-v1.5")
             print("Done.")
     
     try:
-        emb = _embedding_model.encode(text[:2000])
-        return emb.tolist()
+        emb = list(_embedding_model.embed([text[:2000]]))[0].tolist()
+        return emb
     except Exception as e:
         print(f"    Embedding error: {e}")
         return None
