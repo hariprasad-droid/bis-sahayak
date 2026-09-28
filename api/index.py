@@ -1,7 +1,8 @@
 import sys
 import os
 
-# Add the project root to sys.path so 'backend' can be imported
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.append(project_root)
+sys.path.append(os.path.join(project_root, 'backend'))
 
 from backend.main import app  # type: ignore
