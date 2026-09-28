@@ -171,12 +171,23 @@ def retrieve_chunks(query: str, top_k: int = 40):
         "bis act", "regulation", "fee", "lab", "testing", "consumer"
     ] if t in q_lower]
 
+    if not isinstance(docs_list, list):
+        docs_list = []
+
     for item in docs_list:
-        doc = item.get('content', '')
+        if not isinstance(item, dict):
+            continue
+        doc = str(item.get('content', ''))
         meta = item.get('metadata', {})
         # Note: pgvector typically returns similarity or distance. Assume distance.
-        dist = item.get('similarity', 0.5) 
+        try:
+            dist = float(str(item.get('similarity', 0.5)))
+        except (TypeError, ValueError):
+            dist = 0.5
         
+        if not isinstance(meta, dict):
+            meta = {}
+            
         adjusted_dist = dist
         doc_lower = doc.lower()
         title_lower = str(meta.get("title") or meta.get("source") or "").lower()
@@ -363,10 +374,11 @@ def verify_citations(llm_response: str, retrieved_chunks: list) -> list[dict]:
 
 def get_vectorstore_stats() -> dict:
     """Return stats about the vectorstore for the /status endpoint."""
+    from postgrest.types import CountMethod
     try:
         client = get_supabase_client()
         # Basic count
-        response = client.table('documents').select('id', count='exact').limit(1).execute()
+        response = client.table('documents').select('id', count=CountMethod.exact).limit(1).execute()
         total_chunks = response.count or 0
 
         # Count sources from sources.json
