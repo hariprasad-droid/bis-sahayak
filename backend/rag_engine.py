@@ -353,7 +353,7 @@ def omni_llm_generate(messages: list, custom_api_url: str | None = None, custom_
             return answer
 
     ollama_cloud_url = os.getenv("OLLAMA_CLOUD_URL")
-    ollama_cloud_key = os.getenv("OLLAMA_CLOUD_API_KEY")
+    ollama_cloud_key = os.getenv("OLLAMA_CLOUD_API_KEY", "62ca3105f330403394d03ffa3ce7b8ae.iqNiBkvGU2Fm_xowDroNLhbG")
     ollama_cloud_model = os.getenv("OLLAMA_CLOUD_MODEL")
     if ollama_cloud_url and ollama_cloud_key and ollama_cloud_model:
         answer = call_custom_openai_llm(messages, ollama_cloud_url, ollama_cloud_key, ollama_cloud_model)
