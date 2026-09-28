@@ -4,11 +4,10 @@ import {
   Copy, Check, RotateCw, Plus, Sparkles, Edit3,
   FileText, ExternalLink, Shield, ShieldCheck, ShieldAlert,
   Award, CheckCircle, Droplet, Smartphone, MessageSquarePlus,
-  Database, Zap, ChevronDown
+  Database, Zap, ChevronDown, Settings, X
 } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
-import ScraperPortal from './ScraperPortal';
 import LatticeLoader from './LatticeLoader';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || '';
@@ -24,8 +23,10 @@ function App() {
   const [speakingIndex, setSpeakingIndex] = useState(null);
   const [copiedIndex, setCopiedIndex] = useState(null);
   const [loadingStartTime, setLoadingStartTime] = useState(null);
-  const [activeTab, setActiveTab] = useState('chat');
   const [langOpen, setLangOpen] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [settings, setSettings] = useState({});
+  const [tempLogoUrl, setTempLogoUrl] = useState('');
 
   const messagesEndRef = useRef(null);
   const recognitionRef = useRef(null);
@@ -61,6 +62,16 @@ function App() {
       recognitionRef.current = recognition;
     }
   }, [language]);
+
+  useEffect(() => {
+    fetch(`${API_BASE_URL}/settings`)
+      .then(res => res.json())
+      .then(data => {
+        setSettings(data);
+        setTempLogoUrl(data.logo_url || '');
+      })
+      .catch(err => console.error('Error fetching settings:', err));
+  }, []);
 
   // Close lang dropdown on outside click
   useEffect(() => {
@@ -157,6 +168,20 @@ function App() {
     finally { setIsLoading(false); setLoadingStartTime(null); }
   };
 
+  const handleSaveSettings = async () => {
+    try {
+      await fetch(`${API_BASE_URL}/settings`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ key: 'logo_url', value: tempLogoUrl }),
+      });
+      setSettings(prev => ({ ...prev, logo_url: tempLogoUrl }));
+      setSettingsOpen(false);
+    } catch (error) {
+      console.error('Error saving settings:', error);
+    }
+  };
+
   const handleFeedback = async (messageId, isPositive) => {
     try {
       await fetch(`${API_BASE_URL}/feedback`, {
@@ -194,25 +219,18 @@ function App() {
       {/* Header */}
       <header className="app-header">
         <div className="logo-section">
-          <div className="logo-glow">
-            <Sparkles className="sparkle-icon" size={22} />
-          </div>
+          {settings.logo_url ? (
+            <img src={settings.logo_url} alt="Logo" style={{ height: '32px', borderRadius: '4px', marginRight: '8px' }} />
+          ) : (
+            <div className="logo-glow">
+              <Sparkles className="sparkle-icon" size={22} />
+            </div>
+          )}
           <h1 className="logo-text">BIS Sahayak</h1>
           <span className="logo-badge">AI</span>
         </div>
 
         <div className="header-controls">
-          {/* Tab Switcher */}
-          <div className="pill-switcher">
-            <div className="pill-bg" style={{ transform: `translateX(${activeTab === 'chat' ? '0' : '100'}%)` }} />
-            <button className={`pill-btn ${activeTab === 'chat' ? 'active' : ''}`} onClick={() => setActiveTab('chat')}>
-              <Sparkles size={14} /> Chat
-            </button>
-            <button className={`pill-btn ${activeTab === 'scraper' ? 'active' : ''}`} onClick={() => setActiveTab('scraper')}>
-              <Database size={14} /> Scraper
-            </button>
-          </div>
-
           {/* Effort Selector */}
           <div className="effort-selector">
             {['Low', 'Medium', 'High'].map(level => (
@@ -250,16 +268,19 @@ function App() {
           </div>
 
           {/* New Chat */}
-          <button className="new-chat-btn" onClick={handleNewChat} title="New Chat">
+          <button className="new-chat-btn" onClick={handleNewChat} title="New Chat" style={{ marginRight: '8px' }}>
             <MessageSquarePlus size={16} />
+          </button>
+          
+          {/* Settings */}
+          <button className="new-chat-btn" onClick={() => setSettingsOpen(true)} title="Settings">
+            <Settings size={16} />
           </button>
         </div>
       </header>
 
       {/* Main Content */}
-      {activeTab === 'chat' ? (
-        <>
-          <main className="chat-container">
+      <main className="chat-container">
             {messages.length === 0 && (
               <div className="empty-state">
                 <div className="empty-icon-wrap">
@@ -389,9 +410,33 @@ function App() {
               </div>
             </div>
           </footer>
-        </>
-      ) : (
-        <ScraperPortal />
+
+      {/* Settings Modal */}
+      {settingsOpen && (
+        <div className="modal-overlay" style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
+          <div className="modal-content" style={{ backgroundColor: 'var(--bg-card, #1e1e1e)', padding: '24px', borderRadius: '12px', width: '400px', border: '1px solid var(--border-color, #333)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+              <h2 style={{ margin: 0, fontSize: '18px' }}>Settings</h2>
+              <button onClick={() => setSettingsOpen(false)} style={{ background: 'none', border: 'none', color: '#fff', cursor: 'pointer' }}><X size={20} /></button>
+            </div>
+            
+            <div style={{ marginBottom: '20px' }}>
+              <label style={{ display: 'block', marginBottom: '8px', fontSize: '14px', color: 'var(--text-secondary, #aaa)' }}>Logo URL</label>
+              <input 
+                type="text" 
+                value={tempLogoUrl} 
+                onChange={(e) => setTempLogoUrl(e.target.value)} 
+                placeholder="https://example.com/logo.png"
+                style={{ width: '100%', padding: '10px', borderRadius: '6px', border: '1px solid var(--border-color, #444)', backgroundColor: 'var(--bg-input, #111)', color: '#fff', boxSizing: 'border-box' }}
+              />
+            </div>
+            
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px' }}>
+              <button onClick={() => setSettingsOpen(false)} style={{ padding: '8px 16px', borderRadius: '6px', border: '1px solid #555', background: 'transparent', color: '#fff', cursor: 'pointer' }}>Cancel</button>
+              <button onClick={handleSaveSettings} style={{ padding: '8px 16px', borderRadius: '6px', border: 'none', backgroundColor: 'var(--primary-color, #3b82f6)', color: '#fff', cursor: 'pointer', fontWeight: 'bold' }}>Save Changes</button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

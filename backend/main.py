@@ -60,6 +60,10 @@ class FeedbackRequest(BaseModel):
     is_positive: bool
     comment: Optional[str] = None
 
+class SettingRequest(BaseModel):
+    key: str
+    value: str
+
 class SimplifyTextRequest(BaseModel):
     text: str
     language: str = "en"
@@ -186,6 +190,22 @@ async def feedback_endpoint(req: FeedbackRequest, db: Session = Depends(get_db))
         
     db.commit()
     return {"status": "success"}
+
+@app.get("/settings")
+async def get_settings(db: Session = Depends(get_db)):
+    settings = db.query(models.Setting).all()
+    return {s.key: s.value for s in settings}
+
+@app.post("/settings")
+async def update_setting(req: SettingRequest, db: Session = Depends(get_db)):
+    setting = db.query(models.Setting).filter(models.Setting.key == req.key).first()
+    if setting:
+        setting.value = req.value
+    else:
+        setting = models.Setting(key=req.key, value=req.value)
+        db.add(setting)
+    db.commit()
+    return {"status": "success", "key": setting.key, "value": setting.value}
 
 def run_ingest_script():
     try:
