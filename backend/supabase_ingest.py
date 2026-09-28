@@ -43,38 +43,25 @@ def detect_category(filename):
             return category
     return "General"
 
+_embedding_model = None
 def get_embedding_hf(text):
-    """Get 768-dim embedding from HuggingFace free Inference API."""
-    payload = {"inputs": text[:2000], "options": {"wait_for_model": True}}
-    for attempt in range(3):
-        try:
-            r = requests.post(HF_EMBED_URL, json=payload, timeout=60)
-            if r.status_code == 200:
-                emb = r.json()
-                # The API returns a list of token embeddings; we need to mean-pool
-                if isinstance(emb, list) and len(emb) > 0:
-                    if isinstance(emb[0], list):
-                        # Mean pooling across tokens
-                        import numpy as np
-                        arr = np.array(emb)
-                        pooled = arr.mean(axis=0).tolist()
-                        return pooled
-                    else:
-                        return emb
-                return None
-            elif r.status_code == 503:
-                print(f"    Model loading, waiting 20s...")
-                time.sleep(20)
-            elif r.status_code == 429:
-                print(f"    Rate limited, waiting {10*(attempt+1)}s...")
-                time.sleep(10 * (attempt + 1))
-            else:
-                print(f"    HF error {r.status_code}: {r.text[:200]}")
-                return None
-        except Exception as e:
-            print(f"    Request error: {e}")
-            time.sleep(3)
-    return None
+    """Get 768-dim embedding using local sentence-transformers."""
+    global _embedding_model
+    if _embedding_model is None:
+        from sentence_transformers import SentenceTransformer
+        import warnings
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            print("Loading local embedding model...", end=" ", flush=True)
+            _embedding_model = SentenceTransformer("nomic-ai/nomic-embed-text-v1.5", trust_remote_code=True)
+            print("Done.")
+    
+    try:
+        emb = _embedding_model.encode(text[:2000])
+        return emb.tolist()
+    except Exception as e:
+        print(f"    Embedding error: {e}")
+        return None
 
 def chunk_text(text, chunk_size=600, overlap=100):
     chunks = []
