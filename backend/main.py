@@ -178,8 +178,8 @@ async def feedback_endpoint(req: FeedbackRequest, db: Session = Depends(get_db))
         
     feedback = db.query(models.Feedback).filter(models.Feedback.message_id == req.message_id).first()
     if feedback:
-        feedback.is_positive = req.is_positive
-        feedback.comment = req.comment
+        feedback.is_positive = req.is_positive  # type: ignore
+        feedback.comment = req.comment  # type: ignore
     else:
         feedback = models.Feedback(
             message_id=req.message_id,
@@ -200,7 +200,7 @@ async def get_settings(db: Session = Depends(get_db)):
 async def update_setting(req: SettingRequest, db: Session = Depends(get_db)):
     setting = db.query(models.Setting).filter(models.Setting.key == req.key).first()
     if setting:
-        setting.value = req.value
+        setting.value = req.value  # type: ignore
     else:
         setting = models.Setting(key=req.key, value=req.value)
         db.add(setting)

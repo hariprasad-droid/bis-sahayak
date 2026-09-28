@@ -344,8 +344,12 @@ def extract_links(base_url, html_bytes):
     soup = BeautifulSoup(html_bytes, "html.parser")
     links = set()
     for tag in soup.find_all("a", href=True):
-        href = urljoin(base_url, tag["href"].split("#")[0])
-        links.add(href)
+        href_attr = tag.get("href")
+        if isinstance(href_attr, list):
+            href_attr = href_attr[0]
+        if href_attr:
+            href = urljoin(base_url, str(href_attr).split("#")[0])
+            links.add(href)
     return links
 
 

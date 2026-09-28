@@ -209,7 +209,7 @@ def retrieve_chunks(query: str, top_k: int = 40):
         meta = item.get('metadata', {})
         # Note: pgvector typically returns similarity or distance. Assume distance.
         try:
-            dist = float(str(item.get('similarity', 0.5)))
+            dist = 1.0 - float(str(item.get('similarity', 0.5)))
         except (TypeError, ValueError):
             dist = 0.5
         
