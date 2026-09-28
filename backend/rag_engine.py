@@ -49,6 +49,8 @@ def get_embedding(text: str) -> list[float]:
     except ImportError:
         # Fallback for Vercel/Render
         try:
+            import os
+            os.environ["FASTEMBED_CACHE_PATH"] = "/tmp/fastembed_cache"
             from fastembed import TextEmbedding
             if _embedding_model is None:
                 _embedding_model = TextEmbedding("nomic-ai/nomic-embed-text-v1.5")

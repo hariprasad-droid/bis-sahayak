@@ -48,6 +48,8 @@ def get_embedding_hf(text):
     """Get 768-dim embedding using fastembed."""
     global _embedding_model
     if _embedding_model is None:
+        import os
+        os.environ["FASTEMBED_CACHE_PATH"] = "/tmp/fastembed_cache"
         from fastembed import TextEmbedding
         import warnings
         with warnings.catch_warnings():
