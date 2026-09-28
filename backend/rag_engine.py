@@ -47,32 +47,53 @@ def get_embedding(text: str) -> list[float]:
             emb_list = emb_list + [0.0] * (768 - len(emb_list))
         return emb_list
     except ImportError:
-        # Fallback for Vercel where sentence_transformers is not installed due to size limits
-        import requests
-        import time
-        HF_EMBED_URL = "https://api-inference.huggingface.co/pipeline/feature-extraction/nomic-ai/nomic-embed-text-v1.5"
-        payload = {"inputs": text[:2000], "options": {"wait_for_model": True}}
-        for attempt in range(3):
-            try:
-                response = requests.post(HF_EMBED_URL, json=payload, timeout=20)
-                if response.status_code == 200:
-                    emb = response.json()
-                    if isinstance(emb, list) and len(emb) > 0:
-                        if isinstance(emb[0], list):
-                            n = len(emb)
-                            dim = len(emb[0])
-                            pooled = [sum(emb[t][d] for t in range(n)) / n for d in range(dim)]
-                            if len(pooled) > 768:
-                                pooled = pooled[:768]
-                            elif len(pooled) < 768:
-                                pooled = pooled + [0.0] * (768 - len(pooled))
-                            return pooled
-                        return emb
-                elif response.status_code == 503:
-                    time.sleep(3)
-            except Exception:
-                time.sleep(1)
-        return []
+        # Fallback for Vercel/Render
+        try:
+            from fastembed import TextEmbedding
+            if _embedding_model is None:
+                _embedding_model = TextEmbedding("nomic-ai/nomic-embed-text-v1.5")
+            
+            emb = list(_embedding_model.embed([text[:2000]]))[0].tolist()
+            if len(emb) > 768:
+                emb = emb[:768]
+            elif len(emb) < 768:
+                emb = emb + [0.0] * (768 - len(emb))
+            return emb
+        except ImportError:
+            # Fallback to HuggingFace if fastembed is not installed
+            import requests
+            import time
+            import os
+            HF_EMBED_URL = "https://api-inference.huggingface.co/pipeline/feature-extraction/nomic-ai/nomic-embed-text-v1.5"
+            payload = {"inputs": text[:2000], "options": {"wait_for_model": True}}
+            headers = {}
+            hf_token = os.environ.get("HF_TOKEN")
+            if hf_token:
+                headers["Authorization"] = f"Bearer {hf_token}"
+            for attempt in range(3):
+                try:
+                    response = requests.post(HF_EMBED_URL, headers=headers, json=payload, timeout=30)
+                    if response.status_code == 200:
+                        emb = response.json()
+                        if isinstance(emb, list) and len(emb) > 0:
+                            if isinstance(emb[0], list):
+                                n = len(emb)
+                                dim = len(emb[0])
+                                pooled = [sum(emb[t][d] for t in range(n)) / n for d in range(dim)]
+                                if len(pooled) > 768:
+                                    pooled = pooled[:768]
+                                elif len(pooled) < 768:
+                                    pooled = pooled + [0.0] * (768 - len(pooled))
+                                return pooled
+                            return emb
+                    else:
+                        print(f"[Embed] HF API Error: {response.status_code} - {response.text}")
+                    if response.status_code == 503:
+                        time.sleep(3)
+                except Exception as e:
+                    print(f"[Embed] HF API Exception: {e}")
+                    time.sleep(1)
+            return []
 
 
 def is_boilerplate(text: str) -> bool:
