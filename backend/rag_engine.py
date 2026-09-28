@@ -26,25 +26,53 @@ def get_supabase_client() -> Client:
 
 _embedding_model = None
 def get_embedding(text: str) -> list[float]:
-    """Get 768-dim embedding using local sentence-transformers."""
+    """Get 768-dim embedding using local sentence-transformers, fallback to HF API on Vercel."""
     global _embedding_model
-    if _embedding_model is None:
+    try:
         from sentence_transformers import SentenceTransformer
-        import warnings
-        with warnings.catch_warnings():
-            warnings.simplefilter("ignore")
-            _embedding_model = SentenceTransformer("nomic-ai/nomic-embed-text-v1.5", trust_remote_code=True)
-    
-    # Generate embedding
-    emb = _embedding_model.encode(text[:2000])
-    emb_list = emb.tolist()
-    
-    # Ensure 768 dims
-    if len(emb_list) > 768:
-        emb_list = emb_list[:768]
-    elif len(emb_list) < 768:
-        emb_list = emb_list + [0.0] * (768 - len(emb_list))
-    return emb_list
+        if _embedding_model is None:
+            import warnings
+            with warnings.catch_warnings():
+                warnings.simplefilter("ignore")
+                _embedding_model = SentenceTransformer("nomic-ai/nomic-embed-text-v1.5", trust_remote_code=True)
+        
+        # Generate embedding
+        emb = _embedding_model.encode(text[:2000])
+        emb_list = emb.tolist()
+        
+        # Ensure 768 dims
+        if len(emb_list) > 768:
+            emb_list = emb_list[:768]
+        elif len(emb_list) < 768:
+            emb_list = emb_list + [0.0] * (768 - len(emb_list))
+        return emb_list
+    except ImportError:
+        # Fallback for Vercel where sentence_transformers is not installed due to size limits
+        import requests
+        import time
+        HF_EMBED_URL = "https://api-inference.huggingface.co/pipeline/feature-extraction/nomic-ai/nomic-embed-text-v1.5"
+        payload = {"inputs": text[:2000], "options": {"wait_for_model": True}}
+        for attempt in range(3):
+            try:
+                response = requests.post(HF_EMBED_URL, json=payload, timeout=20)
+                if response.status_code == 200:
+                    emb = response.json()
+                    if isinstance(emb, list) and len(emb) > 0:
+                        if isinstance(emb[0], list):
+                            n = len(emb)
+                            dim = len(emb[0])
+                            pooled = [sum(emb[t][d] for t in range(n)) / n for d in range(dim)]
+                            if len(pooled) > 768:
+                                pooled = pooled[:768]
+                            elif len(pooled) < 768:
+                                pooled = pooled + [0.0] * (768 - len(pooled))
+                            return pooled
+                        return emb
+                elif response.status_code == 503:
+                    time.sleep(3)
+            except Exception:
+                time.sleep(1)
+        return []
 
 
 def is_boilerplate(text: str) -> bool:
